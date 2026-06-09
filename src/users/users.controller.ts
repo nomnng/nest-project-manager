@@ -9,12 +9,12 @@ import { ApiBearerAuth } from "@nestjs/swagger";
 export class UsersController {
 	constructor(private usersService: UsersService) {}
 
-    @Get("me")
-    async getCurrentUser(@Req() req) {
-        const userId = req.user.id;
-        const user = await this.usersService.findOne(userId);
-        return {
-            email: user.email,
-        }
-    }
+	@Get("me")
+	async getCurrentUser(@Req() req) {
+		const userId = req.user.id;
+		const user = await this.usersService.findOne(userId);
+		return {
+			email: user.email,
+		};
+	}
 }

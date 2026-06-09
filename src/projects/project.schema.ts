@@ -7,6 +7,12 @@ export type ProjectDocument = HydratedDocument<Project>;
 export class Project {
 	@Prop({ required: true })
 	name: string;
+
+	@Prop({ required: true })
+	ownerId: string;
+
+	@Prop({ required: false })
+	memberIds: string[];
 }
 
 export const ProjectSchema = SchemaFactory.createForClass(Project);

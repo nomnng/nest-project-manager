@@ -3,7 +3,7 @@ import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { ProjectsModule } from "./projects/projects.module";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { MongooseModule } from '@nestjs/mongoose';
+import { MongooseModule } from "@nestjs/mongoose";
 
 @Module({
 	imports: [
@@ -16,7 +16,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 		MongooseModule.forRootAsync({
 			imports: [ConfigModule],
 			useFactory: async (configService: ConfigService) => ({
-				uri: configService.get<string>('MONGO_URI'),
+				uri: configService.get<string>("MONGO_URI"),
 			}),
 			inject: [ConfigService],
 		}),

@@ -12,13 +12,20 @@ export class ProjectsService {
 		private readonly projectModel: Model<ProjectDocument>,
 	) {}
 
-	async create(createProjectDto: CreateProjectDto): Promise<Project> {
-		const project = new this.projectModel(createProjectDto);
+	async create(
+		createProjectDto: CreateProjectDto,
+		ownerId: string,
+	): Promise<Project> {
+		const project = new this.projectModel({ ...createProjectDto, ownerId });
 		return project.save();
 	}
 
-	async findAll(): Promise<Project[]> {
-		return this.projectModel.find().exec();
+	async findAll(userId: string): Promise<Project[]> {
+		return this.projectModel
+			.find({
+				$or: [{ ownerId: userId }, { memberIds: userId }],
+			})
+			.exec();
 	}
 
 	async findOne(id: string): Promise<Project> {
@@ -29,9 +36,12 @@ export class ProjectsService {
 		return project;
 	}
 
-	async update(id: string, updateProjectDto: UpdateProjectDto): Promise<Project> {
+	async update(
+		id: string,
+		updateProjectDto: UpdateProjectDto,
+	): Promise<Project> {
 		const project = await this.projectModel
-			.findByIdAndUpdate(id, updateProjectDto, { new: true })
+			.findOneAndUpdate({ _id: id }, updateProjectDto, { new: true })
 			.exec();
 		if (!project) {
 			throw new NotFoundException("Project not found");
@@ -40,7 +50,7 @@ export class ProjectsService {
 	}
 
 	async remove(id: string): Promise<void> {
-		const result = await this.projectModel.findByIdAndDelete(id).exec();
+		const result = await this.projectModel.findOneAndDelete({ _id: id }).exec();
 		if (!result) {
 			throw new NotFoundException("Project not found");
 		}

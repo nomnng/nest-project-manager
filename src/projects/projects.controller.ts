@@ -8,6 +8,7 @@ import {
 	Param,
 	Patch,
 	Post,
+	Req,
 	UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth } from "@nestjs/swagger";
@@ -15,6 +16,7 @@ import { AuthGuard } from "src/auth/auth.guard";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
 import { ProjectsService } from "./projects.service";
+import { ProjectAccessGuard } from "./projects.guard";
 
 @Controller("projects")
 @ApiBearerAuth("JWT-auth")
@@ -22,29 +24,36 @@ import { ProjectsService } from "./projects.service";
 export class ProjectsController {
 	constructor(private readonly projectsService: ProjectsService) {}
 
-	@Post()
-	create(@Body() createProjectDto: CreateProjectDto) {
-		return this.projectsService.create(createProjectDto);
-	}
-
 	@Get()
-	findAll() {
-		return this.projectsService.findAll();
+	findAll(@Req() req) {
+		return this.projectsService.findAll(req.user.id);
 	}
 
 	@Get(":id")
-	findOne(@Param("id") id: string) {
-		return this.projectsService.findOne(id);
+	@UseGuards(ProjectAccessGuard)
+	findOne(@Param("id") id: string, @Req() req) {
+		return req.project;
+	}
+
+	@Post()
+	create(@Body() createProjectDto: CreateProjectDto, @Req() req) {
+		return this.projectsService.create(createProjectDto, req.user.id);
 	}
 
 	@Patch(":id")
-	update(@Param("id") id: string, @Body() updateProjectDto: UpdateProjectDto) {
-		return this.projectsService.update(id, updateProjectDto);
+	@UseGuards(ProjectAccessGuard)
+	update(
+		@Param("id") id: string,
+		@Body() updateProjectDto: UpdateProjectDto,
+		@Req() req,
+	) {
+		return this.projectsService.update(req.project.id, updateProjectDto);
 	}
 
 	@Delete(":id")
 	@HttpCode(HttpStatus.NO_CONTENT)
-	remove(@Param("id") id: string) {
-		return this.projectsService.remove(id);
+	@UseGuards(ProjectAccessGuard)
+	remove(@Param("id") id: string, @Req() req) {
+		return this.projectsService.remove(req.project.id);
 	}
 }
