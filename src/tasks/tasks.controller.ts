@@ -15,6 +15,7 @@ import {
 import { ApiBearerAuth } from "@nestjs/swagger";
 import { AuthGuard } from "src/auth/auth.guard";
 import { CreateTaskDto } from "./dto/create-task.dto";
+import { FindTasksQueryDto } from "./dto/find-tasks-query.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { TaskAccessGuard } from "./tasks.guard";
 import { TasksService } from "./tasks.service";
@@ -26,8 +27,11 @@ export class TasksController {
 	constructor(private readonly tasksService: TasksService) {}
 
 	@Get()
-	findAll(@Param("projectId") projectId: string) {
-		return this.tasksService.findAll(projectId);
+	findAll(
+		@Param("projectId") projectId: string,
+		@Query() query: FindTasksQueryDto,
+	) {
+		return this.tasksService.findAll(projectId, query);
 	}
 
 	@Get(":id")
