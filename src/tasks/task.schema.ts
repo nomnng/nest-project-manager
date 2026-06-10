@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
+import { TaskStatus } from "./task-status.enum";
 
 export type TaskDocument = HydratedDocument<Task>;
 
@@ -10,6 +11,9 @@ export class Task {
 
 	@Prop({ required: true })
 	projectId: string;
+
+	@Prop({ enum: TaskStatus, default: TaskStatus.TODO, required: true })
+	status: TaskStatus;
 
 	@Prop({ type: [String], default: [] })
 	tags: string[];
