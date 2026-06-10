@@ -12,7 +12,12 @@ export class Task {
 	@Prop({ required: true })
 	projectId: string;
 
-	@Prop({ enum: TaskStatus, default: TaskStatus.TODO, required: true })
+	@Prop({
+		type: String,
+		enum: TaskStatus,
+		default: TaskStatus.TODO,
+		required: true,
+	})
 	status: TaskStatus;
 
 	@Prop({ type: [String], default: [] })
