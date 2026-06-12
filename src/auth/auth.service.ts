@@ -21,7 +21,7 @@ export class AuthService {
 			email: registerDto.email,
 			passwordHash,
 		};
-		this.usersService.create(createUserDto);
+		await this.usersService.create(createUserDto);
 		return {
 			message: "Registration successful",
 		};
