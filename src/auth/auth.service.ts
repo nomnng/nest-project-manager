@@ -2,7 +2,6 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { UsersService } from "../users/users.service";
-import { CreateUserDto } from "../users/dto/create-user.dto";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 
@@ -17,11 +16,7 @@ export class AuthService {
 		const salt = await bcrypt.genSalt(10);
 		const passwordHash = await bcrypt.hash(registerDto.password, salt);
 
-		const createUserDto: CreateUserDto = {
-			email: registerDto.email,
-			passwordHash,
-		};
-		await this.usersService.create(createUserDto);
+		await this.usersService.create(registerDto.email, passwordHash);
 		return {
 			message: "Registration successful",
 		};

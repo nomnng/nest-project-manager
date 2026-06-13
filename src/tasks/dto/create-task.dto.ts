@@ -1,9 +1,36 @@
+import {
+	IsArray,
+	IsDateString,
+	IsEnum,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	MinLength,
+} from "class-validator";
 import { TaskStatus } from "../task-status.enum";
 
 export class CreateTaskDto {
+	@MinLength(3, { message: "Task name must be at least 3 characters long" })
+	@IsString({ message: "Task name must be a string" })
+	@IsNotEmpty({ message: "Task name is required" })
 	name: string;
+
+	@IsOptional()
+	@IsEnum(TaskStatus, {
+		message: "Status must be a valid TaskStatus enum value",
+	})
 	status?: TaskStatus;
+
+	@IsOptional()
+	@IsArray({ message: "Tags must be an array" })
+	@IsString({ each: true, message: "Each tag must be a string" })
 	tags?: string[];
+
+	@IsOptional()
+	@IsDateString({}, { message: "Deadline must be a valid date" })
 	deadline?: Date;
+
+	@IsOptional()
+	@IsString({ message: "Description must be a string" })
 	description?: string;
 }

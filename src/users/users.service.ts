@@ -3,7 +3,6 @@ import {
 	Injectable,
 	NotFoundException,
 } from "@nestjs/common";
-import { CreateUserDto } from "./dto/create-user.dto";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { User, UserDocument } from "./user.schema";
@@ -14,10 +13,10 @@ export class UsersService {
 		@InjectModel(User.name) private readonly userModel: Model<UserDocument>,
 	) {}
 
-	async create(createUserDto: CreateUserDto): Promise<User> {
+	async create(email: string, passwordHash): Promise<User> {
 		const alreadyExists = await this.userModel
 			.findOne({
-				email: createUserDto.email,
+				email,
 			})
 			.exec();
 
@@ -25,7 +24,10 @@ export class UsersService {
 			throw new BadRequestException("User with this email already exists");
 		}
 
-		const newUser = new this.userModel(createUserDto);
+		const newUser = new this.userModel({
+			email,
+			passwordHash,
+		});
 		return newUser.save();
 	}
 
