@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
 import { Project, ProjectDocument } from "./project.schema";
@@ -16,14 +16,19 @@ export class ProjectsService {
 		createProjectDto: CreateProjectDto,
 		ownerId: string,
 	): Promise<Project> {
-		const project = new this.projectModel({ ...createProjectDto, ownerId });
+		const ownerObjectId = new Types.ObjectId(ownerId);
+		const project = new this.projectModel({
+			...createProjectDto,
+			ownerId: ownerObjectId,
+		});
 		return project.save();
 	}
 
 	async findAll(userId: string): Promise<Project[]> {
+		const userObjectId = new Types.ObjectId(userId);
 		return this.projectModel
 			.find({
-				$or: [{ ownerId: userId }, { memberIds: userId }],
+				$or: [{ ownerId: userObjectId }, { memberIds: userObjectId }],
 			})
 			.exec();
 	}

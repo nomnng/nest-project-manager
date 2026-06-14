@@ -3,11 +3,12 @@ import { HttpStatus, INestApplication, ValidationPipe } from "@nestjs/common";
 import { getConnectionToken } from "@nestjs/mongoose";
 import request from "supertest";
 import { App } from "supertest/types";
-import { Connection, Model } from "mongoose";
+import { Connection, Model, Types } from "mongoose";
 import { getModelToken } from "@nestjs/mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { AppModule } from "./../src/app.module";
 import { Project, ProjectDocument } from "src/projects/project.schema";
+import { User, UserDocument } from "src/users/user.schema";
 import { JwtService } from "@nestjs/jwt";
 
 describe("ProjectsController (e2e)", () => {
@@ -16,8 +17,10 @@ describe("ProjectsController (e2e)", () => {
 	let projectModel: Model<ProjectDocument>;
 	let jwtService: JwtService;
 
-	const mainUserId: string = "aabbccdd";
-	const otherUserId: string = "11223344";
+	const mainUserId: string = "65c21e3f9b1d8b0015fbe111";
+	const otherUserId: string = "65c21e3f9b1d8b0015fbe222";
+	const mainUserObjectId = new Types.ObjectId(mainUserId);
+	const otherUserObjectId = new Types.ObjectId(otherUserId);
 
 	let userToken: string;
 
@@ -50,8 +53,8 @@ describe("ProjectsController (e2e)", () => {
 	});
 
 	afterAll(async () => {
-		await mongod.stop();
 		await app.close();
+		await mongod.stop();
 	});
 
 	beforeEach(async () => {
@@ -63,15 +66,18 @@ describe("ProjectsController (e2e)", () => {
 
 	describe("GET /projects", () => {
 		it("returns projects where user is owner or member", async () => {
-			await new projectModel({ name: "Project 1", ownerId: mainUserId }).save();
+			await new projectModel({
+				name: "Project 1",
+				ownerId: mainUserObjectId,
+			}).save();
 			await new projectModel({
 				name: "Project 2",
-				ownerId: otherUserId,
-				memberIds: [mainUserId],
+				ownerId: otherUserObjectId,
+				memberIds: [mainUserObjectId],
 			}).save();
 			await new projectModel({
 				name: "Project 3",
-				ownerId: otherUserId,
+				ownerId: otherUserObjectId,
 			}).save();
 
 			const response = await request(app.getHttpServer())
@@ -91,7 +97,7 @@ describe("ProjectsController (e2e)", () => {
 			const projectName = "My project";
 			const project = await new projectModel({
 				name: projectName,
-				ownerId: mainUserId,
+				ownerId: mainUserObjectId,
 			}).save();
 
 			const response = await request(app.getHttpServer())
@@ -155,12 +161,12 @@ describe("ProjectsController (e2e)", () => {
 		it("updates existing project where user is owner", async () => {
 			const project = await new projectModel({
 				name: "My project",
-				ownerId: mainUserId,
+				ownerId: mainUserObjectId,
 			}).save();
 
 			const updateProjectDto = {
 				name: "Updated project",
-				memberIds: [otherUserId],
+				memberIds: [otherUserObjectId],
 			};
 
 			const response = await request(app.getHttpServer())
@@ -169,32 +175,36 @@ describe("ProjectsController (e2e)", () => {
 				.send(updateProjectDto)
 				.expect(HttpStatus.OK);
 
-			const updatedProjectData = {
-				name: "Updated project",
-				ownerId: mainUserId,
-				memberIds: [otherUserId],
-			};
 			expect(response.body).toEqual(
-				expect.objectContaining(updatedProjectData),
+				expect.objectContaining({
+					name: "Updated project",
+					ownerId: mainUserId,
+					memberIds: [otherUserId],
+				}),
 			);
 
 			const updatedProject = await projectModel.findById(project._id);
 			expect(updatedProject).toEqual(
-				expect.objectContaining(updatedProjectData),
+				expect.objectContaining({
+					name: "Updated project",
+					ownerId: mainUserObjectId,
+					memberIds: [otherUserObjectId],
+				}),
 			);
 		});
 
 		it("updates existing project where user is member", async () => {
 			const project = await new projectModel({
 				name: "My project",
-				ownerId: otherUserId,
-				memberIds: [mainUserId],
+				ownerId: otherUserObjectId,
+				memberIds: [mainUserObjectId],
 			}).save();
 
-			const someRandomUserId = "99887766";
+			const someRandomUserId = "65c21e3f9b1d8b0015fbe999";
+			const someRandomUserObjectId = new Types.ObjectId(someRandomUserId);
 			const updateProjectDto = {
 				name: "Updated project",
-				memberIds: [mainUserId, someRandomUserId],
+				memberIds: [mainUserObjectId, someRandomUserObjectId],
 			};
 
 			const response = await request(app.getHttpServer())
@@ -203,25 +213,28 @@ describe("ProjectsController (e2e)", () => {
 				.send(updateProjectDto)
 				.expect(HttpStatus.OK);
 
-			const updatedProjectData = {
-				name: "Updated project",
-				ownerId: otherUserId,
-				memberIds: [mainUserId, someRandomUserId],
-			};
 			expect(response.body).toEqual(
-				expect.objectContaining(updatedProjectData),
+				expect.objectContaining({
+					name: "Updated project",
+					ownerId: otherUserId,
+					memberIds: [mainUserId, someRandomUserId],
+				}),
 			);
 
 			const updatedProject = await projectModel.findById(project._id);
 			expect(updatedProject).toEqual(
-				expect.objectContaining(updatedProjectData),
+				expect.objectContaining({
+					name: "Updated project",
+					ownerId: otherUserObjectId,
+					memberIds: [mainUserObjectId, someRandomUserObjectId],
+				}),
 			);
 		});
 
 		it("returns 403 Forbidden if user is not owner or member of a project", async () => {
 			const project = await new projectModel({
 				name: "My project",
-				ownerId: otherUserId,
+				ownerId: otherUserObjectId,
 			}).save();
 
 			const updateProjectDto = {
@@ -240,7 +253,7 @@ describe("ProjectsController (e2e)", () => {
 		it("deletes the project if user has access", async () => {
 			const project = await new projectModel({
 				name: "My project",
-				ownerId: mainUserId,
+				ownerId: mainUserObjectId,
 			}).save();
 
 			await request(app.getHttpServer())
@@ -255,7 +268,7 @@ describe("ProjectsController (e2e)", () => {
 		it("returns 403 Forbidden if user is not owner or member", async () => {
 			const project = await new projectModel({
 				name: "My project",
-				ownerId: otherUserId,
+				ownerId: otherUserObjectId,
 			}).save();
 
 			await request(app.getHttpServer())

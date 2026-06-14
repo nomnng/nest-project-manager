@@ -23,8 +23,8 @@ export class ProjectAccessGuard implements CanActivate {
 			throw new NotFoundException("Project not found");
 		}
 
-		const isOwner = project.ownerId === userId;
-		const isMember = project.memberIds?.includes(userId);
+		const isOwner = project.ownerId.toString() === userId;
+		const isMember = project.memberIds?.some((id) => id.toString() === userId);
 
 		if (!isOwner && !isMember) {
 			throw new ForbiddenException("You do not have access to this project");
