@@ -8,12 +8,14 @@ import { getModelToken } from "@nestjs/mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { AppModule } from "./../src/app.module";
 import { Project, ProjectDocument } from "src/projects/project.schema";
+import { Task, TaskDocument } from "src/tasks/task.schema";
 import { JwtService } from "@nestjs/jwt";
 
 describe("ProjectsController (e2e)", () => {
 	let app: INestApplication<App>;
 	let mongod: MongoMemoryServer;
 	let projectModel: Model<ProjectDocument>;
+	let taskModel: Model<TaskDocument>;
 	let jwtService: JwtService;
 
 	const mainUserId: string = "65c21e3f9b1d8b0015fbe111";
@@ -44,6 +46,10 @@ describe("ProjectsController (e2e)", () => {
 
 		projectModel = moduleFixture.get<Model<ProjectDocument>>(
 			getModelToken(Project.name),
+		);
+
+		taskModel = moduleFixture.get<Model<TaskDocument>>(
+			getModelToken(Task.name),
 		);
 
 		jwtService = moduleFixture.get<JwtService>(JwtService);
@@ -262,6 +268,37 @@ describe("ProjectsController (e2e)", () => {
 
 			const deletedProject = await projectModel.findById(project._id);
 			expect(deletedProject).toBeNull();
+		});
+
+		it("deletes the project and all tasks belonging to the project", async () => {
+			const project = await new projectModel({
+				name: "My project",
+				ownerId: mainUserObjectId,
+			}).save();
+
+			const parentTask = await new taskModel({
+				name: "Parent task",
+				projectId: project._id,
+			}).save();
+
+			await new taskModel({
+				name: "Subtask",
+				projectId: project._id,
+				parentTask: parentTask._id,
+			}).save();
+
+			await request(app.getHttpServer())
+				.delete(`/projects/${project._id}`)
+				.set("Authorization", `Bearer ${userToken}`)
+				.expect(HttpStatus.NO_CONTENT);
+
+			const deletedProject = await projectModel.findById(project._id);
+			expect(deletedProject).toBeNull();
+
+			const remainingTasks = await taskModel.find({
+				projectId: project._id,
+			});
+			expect(remainingTasks).toHaveLength(0);
 		});
 
 		it("returns 403 Forbidden if user is not owner or member", async () => {

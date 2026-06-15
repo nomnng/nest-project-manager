@@ -4,12 +4,14 @@ import { NotFoundException } from "@nestjs/common";
 import { Model } from "mongoose";
 import { ProjectsService } from "./projects.service";
 import { Project, ProjectDocument } from "./project.schema";
+import { Task, TaskDocument } from "src/tasks/task.schema";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
 
 describe("ProjectsService", () => {
 	let service: ProjectsService;
 	let model: Model<ProjectDocument>;
+	let taskModel: Model<TaskDocument>;
 
 	const mockModelFactory = () => {
 		const mockQuery = {
@@ -25,8 +27,19 @@ describe("ProjectsService", () => {
 		modelMock.findById = jest.fn().mockReturnValue(mockQuery);
 		modelMock.findOneAndUpdate = jest.fn().mockReturnValue(mockQuery);
 		modelMock.findOneAndDelete = jest.fn().mockReturnValue(mockQuery);
+		modelMock.findByIdAndDelete = jest.fn().mockReturnValue(mockQuery);
 
 		return modelMock;
+	};
+
+	const mockTaskModelFactory = () => {
+		const mockQuery = {
+			exec: jest.fn(),
+		};
+
+		return {
+			deleteMany: jest.fn().mockReturnValue(mockQuery),
+		};
 	};
 
 	beforeEach(async () => {
@@ -37,11 +50,16 @@ describe("ProjectsService", () => {
 					provide: getModelToken(Project.name),
 					useFactory: mockModelFactory,
 				},
+				{
+					provide: getModelToken(Task.name),
+					useFactory: mockTaskModelFactory,
+				},
 			],
 		}).compile();
 
 		service = module.get<ProjectsService>(ProjectsService);
 		model = module.get<Model<ProjectDocument>>(getModelToken(Project.name));
+		taskModel = module.get<Model<TaskDocument>>(getModelToken(Task.name));
 	});
 
 	it("should be defined", () => {
@@ -135,22 +153,35 @@ describe("ProjectsService", () => {
 	});
 
 	describe("remove", () => {
-		it("should delete the project successfully", async () => {
+		it("should delete the project and its tasks successfully", async () => {
 			const projectId = "project-123";
-			const mockQuery = model.findOneAndDelete({});
-			(mockQuery.exec as jest.Mock).mockResolvedValue({ _id: projectId });
+			const findByIdQuery = model.findById(projectId);
+			(findByIdQuery.exec as jest.Mock).mockResolvedValue({ _id: projectId });
+
+			const deleteManyQuery = taskModel.deleteMany({});
+			(deleteManyQuery.exec as jest.Mock).mockResolvedValue({ deletedCount: 2 });
+
+			const deleteProjectQuery = model.findByIdAndDelete(projectId);
+			(deleteProjectQuery.exec as jest.Mock).mockResolvedValue({
+				_id: projectId,
+			});
 
 			await expect(service.remove(projectId)).resolves.not.toThrow();
-			expect(model.findOneAndDelete).toHaveBeenCalledWith({ _id: projectId });
+			expect(model.findById).toHaveBeenCalledWith(projectId);
+			expect(taskModel.deleteMany).toHaveBeenCalledWith({
+				projectId: expect.anything(),
+			});
+			expect(model.findByIdAndDelete).toHaveBeenCalledWith(projectId);
 		});
 
 		it("should throw NotFoundException if project to delete does not exist", async () => {
-			const mockQuery = model.findOneAndDelete({});
+			const mockQuery = model.findById("invalid-id");
 			(mockQuery.exec as jest.Mock).mockResolvedValue(null);
 
 			await expect(service.remove("invalid-id")).rejects.toThrow(
 				NotFoundException,
 			);
+			expect(taskModel.deleteMany).not.toHaveBeenCalled();
 		});
 	});
 });
