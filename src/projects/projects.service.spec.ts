@@ -1,12 +1,15 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { NotFoundException } from "@nestjs/common";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { ProjectsService } from "./projects.service";
 import { Project, ProjectDocument } from "./project.schema";
 import { Task, TaskDocument } from "src/tasks/task.schema";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
+
+const userId = "507f1f77bcf86cd799439013";
+const projectId = "507f1f77bcf86cd799439011";
 
 describe("ProjectsService", () => {
 	let service: ProjectsService;
@@ -20,7 +23,7 @@ describe("ProjectsService", () => {
 
 		const modelMock: any = jest.fn().mockImplementation((dto) => ({
 			...dto,
-			save: jest.fn().mockResolvedValue({ _id: "project-id", ...dto }),
+			save: jest.fn().mockResolvedValue({ _id: projectId, ...dto }),
 		}));
 
 		modelMock.find = jest.fn().mockReturnValue(mockQuery);
@@ -68,26 +71,24 @@ describe("ProjectsService", () => {
 
 	describe("create", () => {
 		it("should successfully create and return a project", async () => {
-			const ownerId = "user-123";
 			const createProjectDto: CreateProjectDto = {
 				name: "New Project",
 				description: "Project Description",
 			} as any;
 
-			const result = await service.create(createProjectDto, ownerId);
+			const result = await service.create(createProjectDto, userId);
 
 			expect(model).toHaveBeenCalledWith({
 				...createProjectDto,
-				ownerId,
+				ownerId: new Types.ObjectId(userId),
 			});
-			expect(result).toHaveProperty("_id", "project-id");
+			expect(result).toHaveProperty("_id", projectId);
 			expect(result.name).toBe("New Project");
 		});
 	});
 
 	describe("findAll", () => {
 		it("should return projects where user is owner or member", async () => {
-			const userId = "user-123";
 			const mockProjects = [{ name: "Project 1" }, { name: "Project 2" }];
 			const mockQuery = model.find({});
 			(mockQuery.exec as jest.Mock).mockResolvedValue(mockProjects);
@@ -95,7 +96,10 @@ describe("ProjectsService", () => {
 			const result = await service.findAll(userId);
 
 			expect(model.find).toHaveBeenCalledWith({
-				$or: [{ ownerId: userId }, { memberIds: userId }],
+				$or: [
+					{ ownerId: new Types.ObjectId(userId) },
+					{ memberIds: new Types.ObjectId(userId) },
+				],
 			});
 			expect(result).toEqual(mockProjects);
 		});
@@ -103,7 +107,6 @@ describe("ProjectsService", () => {
 
 	describe("findOne", () => {
 		it("should return a project if found", async () => {
-			const projectId = "project-123";
 			const mockProject = { _id: projectId, name: "Existing Project" };
 			const mockQuery = model.findById(projectId);
 			(mockQuery.exec as jest.Mock).mockResolvedValue(mockProject);
@@ -126,7 +129,6 @@ describe("ProjectsService", () => {
 
 	describe("update", () => {
 		it("should update and return the project", async () => {
-			const projectId = "project-123";
 			const updateDto: UpdateProjectDto = { name: "Updated Project Name" };
 			const mockProject = { _id: projectId, name: "Updated Project Name" };
 			const mockQuery = model.findOneAndUpdate({}, {}, {});
@@ -154,12 +156,13 @@ describe("ProjectsService", () => {
 
 	describe("remove", () => {
 		it("should delete the project and its tasks successfully", async () => {
-			const projectId = "project-123";
 			const findByIdQuery = model.findById(projectId);
 			(findByIdQuery.exec as jest.Mock).mockResolvedValue({ _id: projectId });
 
 			const deleteManyQuery = taskModel.deleteMany({});
-			(deleteManyQuery.exec as jest.Mock).mockResolvedValue({ deletedCount: 2 });
+			(deleteManyQuery.exec as jest.Mock).mockResolvedValue({
+				deletedCount: 2,
+			});
 
 			const deleteProjectQuery = model.findByIdAndDelete(projectId);
 			(deleteProjectQuery.exec as jest.Mock).mockResolvedValue({
@@ -169,7 +172,7 @@ describe("ProjectsService", () => {
 			await expect(service.remove(projectId)).resolves.not.toThrow();
 			expect(model.findById).toHaveBeenCalledWith(projectId);
 			expect(taskModel.deleteMany).toHaveBeenCalledWith({
-				projectId: expect.anything(),
+				projectId: new Types.ObjectId(projectId),
 			});
 			expect(model.findByIdAndDelete).toHaveBeenCalledWith(projectId);
 		});
