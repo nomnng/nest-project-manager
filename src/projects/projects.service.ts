@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
+import { Comment, CommentDocument } from "src/comments/comment.schema";
 import { Task, TaskDocument } from "src/tasks/task.schema";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
@@ -13,6 +14,8 @@ export class ProjectsService {
 		private readonly projectModel: Model<ProjectDocument>,
 		@InjectModel(Task.name)
 		private readonly taskModel: Model<TaskDocument>,
+		@InjectModel(Comment.name)
+		private readonly commentModel: Model<CommentDocument>,
 	) {}
 
 	async create(
@@ -63,9 +66,15 @@ export class ProjectsService {
 			throw new NotFoundException("Project not found");
 		}
 
-		await this.taskModel
-			.deleteMany({ projectId: new Types.ObjectId(id) })
+		const projectObjectId = new Types.ObjectId(id);
+		const tasks = await this.taskModel
+			.find({ projectId: projectObjectId })
+			.select("_id")
 			.exec();
+		const taskIds = tasks.map((task) => task._id);
+
+		await this.commentModel.deleteMany({ taskId: { $in: taskIds } }).exec();
+		await this.taskModel.deleteMany({ projectId: projectObjectId }).exec();
 		await this.projectModel.findByIdAndDelete(id).exec();
 	}
 }

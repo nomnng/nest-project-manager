@@ -2,6 +2,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getModelToken } from "@nestjs/mongoose";
 import { NotFoundException } from "@nestjs/common";
 import { Model, Types } from "mongoose";
+import { Comment, CommentDocument } from "src/comments/comment.schema";
 import { TasksService } from "./tasks.service";
 import { Task, TaskDocument } from "./task.schema";
 import { CreateTaskDto } from "./dto/create-task.dto";
@@ -13,6 +14,7 @@ const taskId = "507f1f77bcf86cd799439012";
 describe("TasksService", () => {
 	let service: TasksService;
 	let model: Model<TaskDocument>;
+	let commentModel: Model<CommentDocument>;
 
 	const mockModelFactory = () => {
 		const mockQuery = {
@@ -36,6 +38,16 @@ describe("TasksService", () => {
 		return modelMock;
 	};
 
+	const mockCommentModelFactory = () => {
+		const mockQuery = {
+			exec: jest.fn(),
+		};
+
+		return {
+			deleteMany: jest.fn().mockReturnValue(mockQuery),
+		};
+	};
+
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -44,11 +56,18 @@ describe("TasksService", () => {
 					provide: getModelToken(Task.name),
 					useFactory: mockModelFactory,
 				},
+				{
+					provide: getModelToken(Comment.name),
+					useFactory: mockCommentModelFactory,
+				},
 			],
 		}).compile();
 
 		service = module.get<TasksService>(TasksService);
 		model = module.get<Model<TaskDocument>>(getModelToken(Task.name));
+		commentModel = module.get<Model<CommentDocument>>(
+			getModelToken(Comment.name),
+		);
 	});
 
 	it("should be defined", () => {
@@ -179,10 +198,16 @@ describe("TasksService", () => {
 			]);
 
 			const deleteManyExec = jest.fn().mockResolvedValue({ deletedCount: 1 });
+			(commentModel.deleteMany as jest.Mock).mockReturnValue({
+				exec: deleteManyExec,
+			});
 			(model.deleteMany as jest.Mock).mockReturnValue({ exec: deleteManyExec });
 
 			await expect(service.remove(taskId)).resolves.not.toThrow();
 			expect(model.findById).toHaveBeenCalledWith(taskId);
+			expect(commentModel.deleteMany).toHaveBeenCalledWith({
+				taskId: { $in: [taskObjectId] },
+			});
 			expect(model.deleteMany).toHaveBeenCalledWith({
 				_id: { $in: [taskObjectId] },
 			});

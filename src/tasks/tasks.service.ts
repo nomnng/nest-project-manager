@@ -14,6 +14,7 @@ import {
 	TASK_SORT_FIELDS,
 } from "./dto/find-tasks-query.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
+import { Comment, CommentDocument } from "src/comments/comment.schema";
 import { Task, TaskDocument } from "./task.schema";
 
 @Injectable()
@@ -21,6 +22,8 @@ export class TasksService {
 	constructor(
 		@InjectModel(Task.name)
 		private readonly taskModel: Model<TaskDocument>,
+		@InjectModel(Comment.name)
+		private readonly commentModel: Model<CommentDocument>,
 	) {}
 
 	async create(projectId: string, createTaskDto: CreateTaskDto): Promise<Task> {
@@ -112,10 +115,13 @@ export class TasksService {
 
 		const subtasks = await this.getAllSubtasks(id);
 		const subtaskIds = subtasks.map((subtask) => subtask._id);
+		const allTaskIds = [taskToDelete._id, ...subtaskIds];
+
+		await this.commentModel.deleteMany({ taskId: { $in: allTaskIds } }).exec();
 
 		await this.taskModel
 			.deleteMany({
-				_id: { $in: [taskToDelete._id, ...subtaskIds] },
+				_id: { $in: allTaskIds },
 			})
 			.exec();
 	}
