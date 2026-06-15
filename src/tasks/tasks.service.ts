@@ -72,6 +72,34 @@ export class TasksService {
 		return queryBuilder.exec();
 	}
 
+	async findNearLocation(
+		projectId: string,
+		query: FindTasksQueryDto,
+	): Promise<Task[]> {
+		const { longitude, latitude } = query;
+		if (longitude === undefined || latitude === undefined) {
+			throw new BadRequestException(
+				"Both longitude and latitude must be present",
+			);
+		}
+
+		return this.taskModel
+			.aggregate([
+				{
+					$geoNear: {
+						near: {
+							type: "Point",
+							coordinates: [longitude, latitude],
+						},
+						distanceField: "distance",
+						spherical: true,
+						query: { projectId: new Types.ObjectId(projectId) },
+					},
+				},
+			])
+			.exec();
+	}
+
 	async findOne(id: string): Promise<Task> {
 		const task = await this.taskModel.findById(id).exec();
 		if (!task) {

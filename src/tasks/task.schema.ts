@@ -33,6 +33,23 @@ export class Task {
 
 	@Prop({ type: Types.ObjectId, ref: Task.name, required: false })
 	parentTask?: Types.ObjectId;
+
+	@Prop({
+		type: {
+			type: String,
+			enum: ["Point"],
+			required: false,
+		},
+		coordinates: {
+			type: [Number],
+			required: false,
+		},
+		_id: false,
+	})
+	location?: {
+		type: "Point";
+		coordinates: [number, number];
+	};
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);
@@ -41,3 +58,5 @@ TaskSchema.index(
 	{ name: "text", description: "text", tags: "text" },
 	{ name: "task_text_search_index" },
 );
+
+TaskSchema.index({ location: "2dsphere" });

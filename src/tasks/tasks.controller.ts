@@ -31,7 +31,11 @@ export class TasksController {
 		@Param("projectId") projectId: string,
 		@Query() query: FindTasksQueryDto,
 	) {
-		return this.tasksService.findAll(projectId, query);
+		if (query.sortBy === "location") {
+			return this.tasksService.findNearLocation(projectId, query);
+		} else {
+			return this.tasksService.findAll(projectId, query);
+		}
 	}
 
 	@Get(":id")

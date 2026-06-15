@@ -1,10 +1,12 @@
-import { IsIn, IsOptional, IsString } from "class-validator";
+import { Transform } from "class-transformer";
+import { IsIn, IsNumber, IsOptional, IsString } from "class-validator";
 
 export const TASK_SORT_FIELDS = [
 	"name",
 	"status",
 	"deadline",
 	"createdAt",
+	"location",
 ] as const;
 
 export type TaskSortField = (typeof TASK_SORT_FIELDS)[number];
@@ -23,4 +25,14 @@ export class FindTasksQueryDto {
 	@IsOptional()
 	@IsIn(["asc", "desc"])
 	sortOrder?: SortOrder;
+
+	@IsOptional()
+	@Transform(({ value }) => Number(value))
+	@IsNumber({}, { message: "Longitude must be a number" })
+	longitude?: number;
+
+	@IsOptional()
+	@Transform(({ value }) => Number(value))
+	@IsNumber({}, { message: "Latitude must be a number" })
+	latitude?: number;
 }

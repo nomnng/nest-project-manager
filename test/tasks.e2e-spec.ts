@@ -155,6 +155,55 @@ describe("TasksController (e2e)", () => {
 			);
 		});
 
+		it("returns tasks sorted by distance from the provided coordinates", async () => {
+			const userLongitude = 30.5234;
+			const userLatitude = 50.4501;
+
+			const nearTask = await new taskModel({
+				name: "Near task",
+				projectId: mainProjectObjectId,
+				location: {
+					type: "Point",
+					coordinates: [userLongitude - 1, userLatitude],
+				},
+			}).save();
+
+			const farTask = await new taskModel({
+				name: "Far fask",
+				projectId: mainProjectObjectId,
+				location: {
+					type: "Point",
+					coordinates: [userLongitude - 3, userLatitude],
+				},
+			}).save();
+
+			const midTask = await new taskModel({
+				name: "Medium distance task",
+				projectId: mainProjectObjectId,
+				location: {
+					type: "Point",
+					coordinates: [userLongitude - 2, userLatitude],
+				},
+			}).save();
+
+			const response = await request(app.getHttpServer())
+				.get(
+					`/projects/${mainProjectId}/tasks?sortBy=location&longitude=${userLongitude}&latitude=${userLatitude}`,
+				)
+				.set("Authorization", `Bearer ${userToken}`)
+				.expect(HttpStatus.OK);
+
+			expect(response.body).toHaveLength(3);
+
+			expect(response.body[0].name).toBe(nearTask.name);
+			expect(response.body[1].name).toBe(midTask.name);
+			expect(response.body[2].name).toBe(farTask.name);
+
+			expect(response.body[0]).toHaveProperty("distance");
+			expect(response.body[0].distance).toBeLessThan(response.body[1].distance);
+			expect(response.body[1].distance).toBeLessThan(response.body[2].distance);
+		});
+
 		it("sorts tasks in ascending order by default", async () => {
 			await new taskModel({
 				name: "B task",
@@ -267,6 +316,10 @@ describe("TasksController (e2e)", () => {
 				tags: ["important", "test"],
 				deadline: new Date().toISOString(),
 				description: "Task description text",
+				location: {
+					type: "Point",
+					coordinates: [30.5234, 50.4501],
+				},
 			};
 
 			const response = await request(app.getHttpServer())
@@ -371,6 +424,10 @@ describe("TasksController (e2e)", () => {
 				name: "Updated task",
 				description: "Updated description",
 				tags: ["New tag"],
+				location: {
+					type: "Point",
+					coordinates: [30.5234, 50.4501],
+				},
 			};
 
 			const response = await request(app.getHttpServer())

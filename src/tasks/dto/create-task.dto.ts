@@ -7,8 +7,11 @@ import {
 	IsOptional,
 	IsString,
 	MinLength,
+	ValidateNested,
 } from "class-validator";
 import { TaskStatus } from "../task-status.enum";
+import { LocationDto } from "./location.dto";
+import { Type } from "class-transformer";
 
 export class CreateTaskDto {
 	@MinLength(3, { message: "Task name must be at least 3 characters long" })
@@ -38,4 +41,9 @@ export class CreateTaskDto {
 	@IsOptional()
 	@IsMongoId({ message: "Parent task must be a valid MongoDB ObjectId" })
 	parentTask?: string;
+
+	@IsOptional()
+	@ValidateNested({ message: "Location object is invalid" })
+	@Type(() => LocationDto)
+	location?: LocationDto;
 }
