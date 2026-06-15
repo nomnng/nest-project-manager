@@ -286,6 +286,66 @@ describe("TasksController (e2e)", () => {
 			expect(createdTask?.name).toBe(createTaskDto.name);
 		});
 
+		it("creates a subtask successfully", async () => {
+			const existingTask = await new taskModel({
+				name: "Task",
+				projectId: mainProjectObjectId,
+			}).save();
+
+			const createTaskDto = {
+				name: "New task",
+				parentTask: existingTask.id,
+			};
+
+			const response = await request(app.getHttpServer())
+				.post(`/projects/${mainProjectId}/tasks`)
+				.set("Authorization", `Bearer ${userToken}`)
+				.send(createTaskDto)
+				.expect(HttpStatus.CREATED);
+
+			expect(response.body).toEqual(
+				expect.objectContaining({
+					_id: expect.any(String),
+					...createTaskDto,
+				}),
+			);
+
+			const createdTask = await taskModel.findById(response.body._id);
+			expect(createdTask?.name).toBe(createTaskDto.name);
+			expect(createdTask?.parentTask).toBe(existingTask.id);
+		});
+
+		it("returns 404 if parent task can't be found", async () => {
+			const createTaskDto = {
+				name: "New task",
+				parentTask: "aabbccddaabbccddaabbccdd",
+			};
+
+			await request(app.getHttpServer())
+				.post(`/projects/${mainProjectId}/tasks`)
+				.set("Authorization", `Bearer ${userToken}`)
+				.send(createTaskDto)
+				.expect(HttpStatus.NOT_FOUND);
+		});
+
+		it("returns 400 if parent task belongs to another project", async () => {
+			const existingTask = await new taskModel({
+				name: "Task",
+				projectId: otherProjectObjectId,
+			}).save();
+
+			const createTaskDto = {
+				name: "New task",
+				parentTask: existingTask.id,
+			};
+
+			await request(app.getHttpServer())
+				.post(`/projects/${mainProjectId}/tasks`)
+				.set("Authorization", `Bearer ${userToken}`)
+				.send(createTaskDto)
+				.expect(HttpStatus.BAD_REQUEST);
+		});
+
 		it("returns 403 Forbidden if user doesn't have access to the project", async () => {
 			const createTaskDto = {
 				name: "New task",
@@ -365,6 +425,34 @@ describe("TasksController (e2e)", () => {
 			expect(deletedTask).toBeNull();
 		});
 
+		it("deletes subtasks of the task", async () => {
+			const task = await new taskModel({
+				name: "Task",
+				projectId: mainProjectObjectId,
+			}).save();
+
+			const subtask1 = await new taskModel({
+				name: "Subtask 1",
+				projectId: mainProjectObjectId,
+				parentTask: task._id,
+			}).save();
+
+			const subtask2 = await new taskModel({
+				name: "Subtask 2",
+				projectId: mainProjectObjectId,
+				parentTask: task._id,
+			}).save();
+
+			await request(app.getHttpServer())
+				.delete(`/projects/${mainProjectId}/tasks/${task._id}`)
+				.set("Authorization", `Bearer ${userToken}`)
+				.expect(HttpStatus.NO_CONTENT);
+
+			expect(await taskModel.findById(task._id)).toBeNull();
+			expect(await taskModel.findById(subtask1._id)).toBeNull();
+			expect(await taskModel.findById(subtask2._id)).toBeNull();
+		});
+
 		it("returns 403 Forbidden if user doesn't have access to the project", async () => {
 			const task = await new taskModel({
 				name: "Task",
@@ -378,6 +466,52 @@ describe("TasksController (e2e)", () => {
 
 			const taskInDb = await taskModel.findById(task._id);
 			expect(taskInDb).toBeTruthy();
+		});
+	});
+
+	describe("GET /tasks/:id/subtasks", () => {
+		it("returns subtasks of the task", async () => {
+			const rootTask = await new taskModel({
+				name: "Root task",
+				projectId: mainProjectObjectId,
+			}).save();
+
+			const subtask = await new taskModel({
+				name: "Subtask",
+				projectId: mainProjectObjectId,
+				parentTask: rootTask._id,
+			}).save();
+
+			await new taskModel({
+				name: "Sub-subtask 1",
+				projectId: mainProjectObjectId,
+				parentTask: subtask._id,
+			}).save();
+
+			await new taskModel({
+				name: "Sub-subtask 2",
+				projectId: mainProjectObjectId,
+				parentTask: subtask._id,
+			}).save();
+
+			await new taskModel({
+				name: "Regular task",
+				projectId: mainProjectObjectId,
+			}).save();
+
+			const response = await request(app.getHttpServer())
+				.get(`/projects/${mainProjectId}/tasks/${rootTask._id}/subtasks`)
+				.set("Authorization", `Bearer ${userToken}`)
+				.expect(HttpStatus.OK);
+
+			expect(response.body).toHaveLength(3);
+			expect(response.body).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ name: "Subtask" }),
+					expect.objectContaining({ name: "Sub-subtask 1" }),
+					expect.objectContaining({ name: "Sub-subtask 2" }),
+				]),
+			);
 		});
 	});
 });

@@ -43,6 +43,15 @@ export class TasksController {
 		return req.task;
 	}
 
+	@Get(":id/subtasks")
+	findSubtasks(
+		@Param("projectId") projectId: string,
+		@Param("id") id: string,
+		@Req() req,
+	) {
+		return this.tasksService.getAllSubtasks(id);
+	}
+
 	@Post()
 	create(
 		@Param("projectId") projectId: string,

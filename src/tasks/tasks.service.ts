@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	ForbiddenException,
 	Injectable,
 	NotFoundException,
@@ -23,6 +24,21 @@ export class TasksService {
 	) {}
 
 	async create(projectId: string, createTaskDto: CreateTaskDto): Promise<Task> {
+		if (createTaskDto.parentTask) {
+			const parentTask = await this.taskModel
+				.findById(createTaskDto.parentTask)
+				.exec();
+			if (!parentTask) {
+				throw new NotFoundException("Parent task not found");
+			}
+
+			if (parentTask.projectId.toString() !== projectId) {
+				throw new BadRequestException(
+					"Parent task must belong to the same project",
+				);
+			}
+		}
+
 		const task = new this.taskModel({
 			...createTaskDto,
 			projectId,
@@ -62,19 +78,70 @@ export class TasksService {
 	}
 
 	async update(id: string, updateTaskDto: UpdateTaskDto): Promise<Task> {
-		const task = await this.taskModel
-			.findOneAndUpdate({ _id: id }, updateTaskDto, { new: true })
-			.exec();
-		if (!task) {
+		const currentTask = await this.taskModel.findById(id).exec();
+		if (!currentTask) {
 			throw new NotFoundException("Task not found");
 		}
-		return task;
+
+		if (updateTaskDto.parentTask) {
+			const newParentId = updateTaskDto.parentTask;
+
+			const parentTask = await this.taskModel.findById(newParentId).exec();
+			if (!parentTask) {
+				throw new NotFoundException("Parent task not found");
+			}
+
+			if (
+				parentTask.projectId.toString() !== currentTask.projectId.toString()
+			) {
+				throw new ForbiddenException(
+					"Parent task must belong to the same project",
+				);
+			}
+		}
+
+		currentTask.set(updateTaskDto);
+		return currentTask.save();
 	}
 
 	async remove(id: string): Promise<void> {
-		const result = await this.taskModel.findOneAndDelete({ _id: id }).exec();
-		if (!result) {
+		const taskToDelete = await this.taskModel.findById(id).exec();
+		if (!taskToDelete) {
 			throw new NotFoundException("Task not found");
 		}
+
+		const subtasks = await this.getAllSubtasks(id);
+		const subtaskIds = subtasks.map((subtask) => subtask._id);
+
+		await this.taskModel
+			.deleteMany({
+				_id: { $in: [taskToDelete._id, ...subtaskIds] },
+			})
+			.exec();
+	}
+
+	async getAllSubtasks(taskId: string): Promise<Task[]> {
+		const [result] = await this.taskModel.aggregate([
+			{
+				$match: { _id: new Types.ObjectId(taskId) },
+			},
+			{
+				$graphLookup: {
+					from: this.taskModel.collection.name,
+					startWith: "$_id",
+					connectFromField: "_id",
+					connectToField: "parentTask",
+					as: "allNestedSubtasks",
+				},
+			},
+			{
+				$project: {
+					_id: 0,
+					allNestedSubtasks: 1,
+				},
+			},
+		]);
+
+		return result?.allNestedSubtasks ?? [];
 	}
 }

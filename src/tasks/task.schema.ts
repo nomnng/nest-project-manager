@@ -7,6 +7,8 @@ export type TaskDocument = HydratedDocument<Task>;
 
 @Schema({ timestamps: { createdAt: true, updatedAt: false } })
 export class Task {
+	_id: Types.ObjectId;
+
 	@Prop({ required: true })
 	name: string;
 
@@ -28,6 +30,9 @@ export class Task {
 
 	@Prop({ required: false })
 	description?: string;
+
+	@Prop({ type: Types.ObjectId, ref: Task.name, required: false })
+	parentTask?: Types.ObjectId;
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);

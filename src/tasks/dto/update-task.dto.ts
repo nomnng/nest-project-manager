@@ -2,6 +2,7 @@ import {
 	IsArray,
 	IsDateString,
 	IsEnum,
+	IsMongoId,
 	IsOptional,
 	IsString,
 	MinLength,
@@ -32,4 +33,8 @@ export class UpdateTaskDto {
 	@IsOptional()
 	@IsString({ message: "Description must be a string" })
 	description?: string;
+
+	@IsOptional()
+	@IsMongoId({ message: "Parent task must be a valid MongoDB ObjectId" })
+	parentTask?: string;
 }
