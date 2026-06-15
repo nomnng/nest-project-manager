@@ -8,7 +8,6 @@ import { getModelToken } from "@nestjs/mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { AppModule } from "./../src/app.module";
 import { Project, ProjectDocument } from "src/projects/project.schema";
-import { User, UserDocument } from "src/users/user.schema";
 import { JwtService } from "@nestjs/jwt";
 
 describe("ProjectsController (e2e)", () => {

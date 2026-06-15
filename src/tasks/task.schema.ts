@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { HydratedDocument } from "mongoose";
+import { HydratedDocument, Types } from "mongoose";
 import { TaskStatus } from "./task-status.enum";
+import { Project } from "src/projects/project.schema";
 
 export type TaskDocument = HydratedDocument<Task>;
 
@@ -9,14 +10,13 @@ export class Task {
 	@Prop({ required: true })
 	name: string;
 
-	@Prop({ required: true })
-	projectId: string;
+	@Prop({ type: Types.ObjectId, ref: Project.name, required: true })
+	projectId: Types.ObjectId;
 
 	@Prop({
 		type: String,
 		enum: TaskStatus,
 		default: TaskStatus.TODO,
-		required: true,
 	})
 	status: TaskStatus;
 
@@ -31,3 +31,8 @@ export class Task {
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);
+
+TaskSchema.index(
+	{ name: "text", description: "text", tags: "text" },
+	{ name: "task_text_search_index" },
+);

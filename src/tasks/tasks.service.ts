@@ -4,7 +4,7 @@ import {
 	NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { ProjectsService } from "src/projects/projects.service";
 import { ProjectDocument } from "src/projects/project.schema";
 import { CreateTaskDto } from "./dto/create-task.dto";
@@ -34,13 +34,13 @@ export class TasksService {
 		projectId: string,
 		query: FindTasksQueryDto = {},
 	): Promise<Task[]> {
-		const filter: Record<string, unknown> = { projectId };
+		const filter: Record<string, unknown> = {
+			projectId: new Types.ObjectId(projectId),
+		};
 
 		const search = query.search?.trim();
 		if (search) {
-			const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-			const regex = new RegExp(escaped, "i");
-			filter.$or = [{ name: regex }, { description: regex }, { tags: regex }];
+			filter.$text = { $search: search };
 		}
 
 		let queryBuilder = this.taskModel.find(filter);

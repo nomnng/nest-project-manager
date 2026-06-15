@@ -28,8 +28,8 @@ export class TaskAccessGuard implements CanActivate {
 			throw new NotFoundException("Project not found");
 		}
 
-		const isOwner = project.ownerId === userId;
-		const isMember = project.memberIds?.includes(userId);
+		const isOwner = project.ownerId.toString() === userId;
+		const isMember = project.memberIds?.some((id) => id.toString() === userId);
 
 		if (!isOwner && !isMember) {
 			throw new ForbiddenException("You do not have access to this project");
@@ -38,7 +38,7 @@ export class TaskAccessGuard implements CanActivate {
 		if (!taskId) return true;
 
 		const task = await this.tasksService.findOne(taskId);
-		if (task?.projectId !== projectId) {
+		if (task?.projectId?.toString() !== projectId) {
 			throw new NotFoundException("Task not found");
 		}
 
