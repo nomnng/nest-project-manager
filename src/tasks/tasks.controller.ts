@@ -12,7 +12,7 @@ import {
 	Req,
 	UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { AuthGuard } from "src/auth/auth.guard";
 import { CreateTaskDto } from "./dto/create-task.dto";
 import { FindTasksQueryDto } from "./dto/find-tasks-query.dto";
@@ -27,6 +27,10 @@ export class TasksController {
 	constructor(private readonly tasksService: TasksService) {}
 
 	@Get()
+	@ApiOperation({
+		summary:
+			"Get all tasks for a specific project, with optional filtering and sorting",
+	})
 	findAll(
 		@Param("projectId") projectId: string,
 		@Query() query: FindTasksQueryDto,
@@ -39,6 +43,7 @@ export class TasksController {
 	}
 
 	@Get(":id")
+	@ApiOperation({ summary: "Get a specific task by its id within a project" })
 	findOne(
 		@Param("projectId") projectId: string,
 		@Param("id") id: string,
@@ -48,6 +53,7 @@ export class TasksController {
 	}
 
 	@Get(":id/subtasks")
+	@ApiOperation({ summary: "Get all subtasks for a specific task" })
 	findSubtasks(
 		@Param("projectId") projectId: string,
 		@Param("id") id: string,
@@ -57,6 +63,7 @@ export class TasksController {
 	}
 
 	@Post()
+	@ApiOperation({ summary: "Create a new task in a specific project" })
 	create(
 		@Param("projectId") projectId: string,
 		@Body() createTaskDto: CreateTaskDto,
@@ -65,6 +72,7 @@ export class TasksController {
 	}
 
 	@Patch(":id")
+	@ApiOperation({ summary: "Update details of an existing task by id" })
 	update(
 		@Param("projectId") projectId: string,
 		@Param("id") id: string,
@@ -75,6 +83,7 @@ export class TasksController {
 
 	@Delete(":id")
 	@HttpCode(HttpStatus.NO_CONTENT)
+	@ApiOperation({ summary: "Delete a specific task by its id" })
 	remove(@Param("projectId") projectId: string, @Param("id") id: string) {
 		return this.tasksService.remove(id);
 	}

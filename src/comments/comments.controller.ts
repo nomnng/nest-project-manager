@@ -11,7 +11,7 @@ import {
 	Req,
 	UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiOperation } from "@nestjs/swagger";
 import { AuthGuard } from "src/auth/auth.guard";
 import { CreateCommentDto } from "./dto/create-comment.dto";
 import { UpdateCommentDto } from "./dto/update-comment.dto";
@@ -25,16 +25,19 @@ export class CommentsController {
 	constructor(private readonly commentsService: CommentsService) {}
 
 	@Get()
+	@ApiOperation({ summary: "Get all comments for a specific task" })
 	findAll(@Param("taskId") taskId: string) {
 		return this.commentsService.findAll(taskId);
 	}
 
 	@Get(":id")
+	@ApiOperation({ summary: "Get a specific comment by its id" })
 	findOne(@Req() req) {
 		return req.comment;
 	}
 
 	@Post()
+	@ApiOperation({ summary: "Create a new comment for a specific task" })
 	create(
 		@Param("taskId") taskId: string,
 		@Body() createCommentDto: CreateCommentDto,
@@ -44,11 +47,13 @@ export class CommentsController {
 	}
 
 	@Patch(":id")
+	@ApiOperation({ summary: "Update an existing comment" })
 	update(@Param("id") id: string, @Body() updateCommentDto: UpdateCommentDto) {
 		return this.commentsService.update(id, updateCommentDto);
 	}
 
 	@Delete(":id")
+	@ApiOperation({ summary: "Delete a specific comment" })
 	@HttpCode(HttpStatus.NO_CONTENT)
 	remove(@Param("id") id: string) {
 		return this.commentsService.remove(id);
