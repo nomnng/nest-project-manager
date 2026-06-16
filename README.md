@@ -7,6 +7,10 @@ REST API for managing projects and tasks, built with NestJS. Users can register,
 - User registration and login using JWT
 - CRUD for projects
 - CRUD for tasks within projects
+- CRUD for subtasks under tasks
+- Commenting system for tasks
+- Geospatial sorting
+- Stats aggregation endpoints (e.g., counts, summaries)
 - MongoDB persistence via Mongoose
 - Docs dynamically built by Swagger
 
@@ -46,5 +50,6 @@ The API listens on `http://localhost:3000` (or the port set in `PORT`).
 - **Auth:** `POST /auth/register`, `POST /auth/login`
 - **Projects:** `GET|POST /projects`, `GET|PATCH|DELETE /projects/:id`
 - **Tasks:** `GET|POST /projects/:projectId/tasks`, `GET|PATCH|DELETE /projects/:projectId/tasks/:id`
+- **Comments:** `GET|POST /projects/:projectId/tasks/:taskId/comments`, `GET|PATCH|DELETE /projects/:projectId/tasks/:taskId/comments/:id`
 
 Protected routes require the `Authorization: Bearer <token>` header.
