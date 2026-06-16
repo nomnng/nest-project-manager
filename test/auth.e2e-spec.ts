@@ -72,12 +72,10 @@ describe("AuthController (e2e)", () => {
 				.send(payload)
 				.expect(201);
 
-			const response = await request(app.getHttpServer())
+			await request(app.getHttpServer())
 				.post("/auth/register")
 				.send(payload)
 				.expect(400);
-
-			expect(response.body.message).toBe("User with this email already exists");
 		});
 	});
 

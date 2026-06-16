@@ -1,0 +1,4 @@
+export enum UserErrorCodes {
+	NOT_FOUND = "USER_NOT_FOUND",
+	ALREADY_EXISTS = "USER_ALREADY_EXISTS",
+}

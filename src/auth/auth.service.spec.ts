@@ -94,7 +94,7 @@ describe("AuthService", () => {
 		});
 
 		it("should throw UnauthorizedException if user email is not found", async () => {
-			usersService.findOneByEmail.mockRejectedValue(new Error("Not found"));
+			usersService.findOneByEmail.mockResolvedValue(null);
 
 			await expect(service.login(loginDto)).rejects.toThrow(
 				UnauthorizedException,

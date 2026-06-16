@@ -1,15 +1,13 @@
-import {
-	CanActivate,
-	ExecutionContext,
-	ForbiddenException,
-	Injectable,
-	NotFoundException,
-} from "@nestjs/common";
+import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { ProjectsService } from "src/projects/projects.service";
 import { Task, TaskDocument } from "src/tasks/task.schema";
 import { CommentsService } from "./comments.service";
+import { ProjectNotFoundException } from "src/projects/errors/project-not-found.exception";
+import { ProjectForbiddenException } from "src/projects/errors/project-forbidden.exception";
+import { TaskNotFoundException } from "src/tasks/errors/task-not-found.exception";
+import { CommentNotFoundException } from "./errors/comment-not-found.exception";
 
 @Injectable()
 export class CommentAccessGuard implements CanActivate {
@@ -31,21 +29,21 @@ export class CommentAccessGuard implements CanActivate {
 
 		const project = await this.projectsService.findOne(projectId);
 		if (!project) {
-			throw new NotFoundException("Project not found");
+			throw new ProjectNotFoundException(projectId);
 		}
 
 		const isOwner = project.ownerId.toString() === userId;
 		const isMember = project.memberIds?.some((id) => id.toString() === userId);
 
 		if (!isOwner && !isMember) {
-			throw new ForbiddenException("You do not have access to this project");
+			throw new ProjectForbiddenException(projectId);
 		}
 
 		if (!taskId) return true;
 
 		const task = await this.taskModel.findById(taskId).exec();
 		if (!task || task.projectId.toString() !== projectId) {
-			throw new NotFoundException("Task not found");
+			throw new TaskNotFoundException(taskId);
 		}
 
 		request.task = task;
@@ -54,7 +52,7 @@ export class CommentAccessGuard implements CanActivate {
 
 		const comment = await this.commentsService.findOne(commentId);
 		if (comment.taskId.toString() !== taskId) {
-			throw new NotFoundException("Comment not found");
+			throw new CommentNotFoundException(commentId);
 		}
 
 		request.comment = comment;

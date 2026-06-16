@@ -1,11 +1,9 @@
-import {
-	BadRequestException,
-	Injectable,
-	NotFoundException,
-} from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { User, UserDocument } from "./user.schema";
+import { UserAlreadyExistsException } from "./errors/user-already-exists.exception";
+import { UserNotFoundException } from "./errors/user-not-found.exception";
 
 @Injectable()
 export class UsersService {
@@ -21,7 +19,7 @@ export class UsersService {
 			.exec();
 
 		if (alreadyExists) {
-			throw new BadRequestException("User with this email already exists");
+			throw new UserAlreadyExistsException(email);
 		}
 
 		const newUser = new this.userModel({
@@ -34,16 +32,12 @@ export class UsersService {
 	async findOne(id: string): Promise<User> {
 		const user = await this.userModel.findById(id).exec();
 		if (!user) {
-			throw new NotFoundException("User not found");
+			throw new UserNotFoundException(id);
 		}
 		return user;
 	}
 
-	async findOneByEmail(email: string): Promise<User> {
-		const user = await this.userModel.findOne({ email }).exec();
-		if (!user) {
-			throw new NotFoundException("User not found");
-		}
-		return user;
+	async findOneByEmail(email: string): Promise<User | null> {
+		return await this.userModel.findOne({ email }).exec();
 	}
 }

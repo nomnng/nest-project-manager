@@ -15,6 +15,7 @@ export class UsersController {
 		const userId = req.user.id;
 		const user = await this.usersService.findOne(userId);
 		return {
+			id: userId,
 			email: user.email,
 		};
 	}

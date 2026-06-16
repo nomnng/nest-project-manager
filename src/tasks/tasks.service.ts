@@ -1,9 +1,4 @@
-import {
-	BadRequestException,
-	ForbiddenException,
-	Injectable,
-	NotFoundException,
-} from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { CreateTaskDto } from "./dto/create-task.dto";
@@ -14,6 +9,9 @@ import {
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { Comment, CommentDocument } from "src/comments/comment.schema";
 import { Task, TaskDocument } from "./task.schema";
+import { TaskNotFoundException } from "./errors/task-not-found.exception";
+import { TaskInvalidParentException } from "./errors/task-invalid-parent.exception";
+import { TaskInvalidCoordsException } from "./errors/task-invalid-coords.exception";
 
 @Injectable()
 export class TasksService {
@@ -30,13 +28,11 @@ export class TasksService {
 				.findById(createTaskDto.parentTask)
 				.exec();
 			if (!parentTask) {
-				throw new NotFoundException("Parent task not found");
+				throw new TaskNotFoundException(createTaskDto.parentTask);
 			}
 
 			if (parentTask.projectId.toString() !== projectId) {
-				throw new BadRequestException(
-					"Parent task must belong to the same project",
-				);
+				throw new TaskInvalidParentException(parentTask.id);
 			}
 		}
 
@@ -76,9 +72,7 @@ export class TasksService {
 	): Promise<Task[]> {
 		const { longitude, latitude } = query;
 		if (longitude === undefined || latitude === undefined) {
-			throw new BadRequestException(
-				"Both longitude and latitude must be present",
-			);
+			throw new TaskInvalidCoordsException(longitude, latitude);
 		}
 
 		return this.taskModel
@@ -101,7 +95,7 @@ export class TasksService {
 	async findOne(id: string): Promise<Task> {
 		const task = await this.taskModel.findById(id).exec();
 		if (!task) {
-			throw new NotFoundException("Task not found");
+			throw new TaskNotFoundException(id);
 		}
 		return task;
 	}
@@ -109,7 +103,7 @@ export class TasksService {
 	async update(id: string, updateTaskDto: UpdateTaskDto): Promise<Task> {
 		const currentTask = await this.taskModel.findById(id).exec();
 		if (!currentTask) {
-			throw new NotFoundException("Task not found");
+			throw new TaskNotFoundException(id);
 		}
 
 		if (updateTaskDto.parentTask) {
@@ -117,15 +111,13 @@ export class TasksService {
 
 			const parentTask = await this.taskModel.findById(newParentId).exec();
 			if (!parentTask) {
-				throw new NotFoundException("Parent task not found");
+				throw new TaskNotFoundException(newParentId);
 			}
 
 			if (
 				parentTask.projectId.toString() !== currentTask.projectId.toString()
 			) {
-				throw new ForbiddenException(
-					"Parent task must belong to the same project",
-				);
+				throw new TaskInvalidParentException(parentTask.id);
 			}
 		}
 
@@ -136,7 +128,7 @@ export class TasksService {
 	async remove(id: string): Promise<void> {
 		const taskToDelete = await this.taskModel.findById(id).exec();
 		if (!taskToDelete) {
-			throw new NotFoundException("Task not found");
+			throw new TaskNotFoundException(id);
 		}
 
 		const subtasks = await this.getAllSubtasks(id);

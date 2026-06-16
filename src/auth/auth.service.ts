@@ -4,6 +4,7 @@ import { RegisterDto } from "./dto/register.dto";
 import { UsersService } from "../users/users.service";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
+import { InvalidCredentialsException } from "./errors/invalid-credentials.exception";
 
 @Injectable()
 export class AuthService {
@@ -23,11 +24,9 @@ export class AuthService {
 	}
 
 	async login(loginDto: LoginDto) {
-		let user;
-		try {
-			user = await this.usersService.findOneByEmail(loginDto.email);
-		} catch (error) {
-			throw new UnauthorizedException("Invalid email or password");
+		const user = await this.usersService.findOneByEmail(loginDto.email);
+		if (!user) {
+			throw new InvalidCredentialsException();
 		}
 
 		const isPasswordValid = await bcrypt.compare(
@@ -36,7 +35,7 @@ export class AuthService {
 		);
 
 		if (!isPasswordValid) {
-			throw new UnauthorizedException("Invalid email or password");
+			throw new InvalidCredentialsException();
 		}
 
 		const payload = { id: user.id };

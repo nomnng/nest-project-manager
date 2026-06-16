@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { CreateCommentDto } from "./dto/create-comment.dto";
 import { UpdateCommentDto } from "./dto/update-comment.dto";
 import { Comment, CommentDocument } from "./comment.schema";
+import { CommentNotFoundException } from "./errors/comment-not-found.exception";
 
 @Injectable()
 export class CommentsService {
@@ -34,7 +35,7 @@ export class CommentsService {
 	async findOne(id: string): Promise<Comment> {
 		const comment = await this.commentModel.findById(id).exec();
 		if (!comment) {
-			throw new NotFoundException("Comment not found");
+			throw new CommentNotFoundException(id);
 		}
 		return comment;
 	}
@@ -45,7 +46,7 @@ export class CommentsService {
 	): Promise<Comment> {
 		const comment = await this.commentModel.findById(id).exec();
 		if (!comment) {
-			throw new NotFoundException("Comment not found");
+			throw new CommentNotFoundException(id);
 		}
 
 		comment.set(updateCommentDto);
@@ -55,7 +56,7 @@ export class CommentsService {
 	async remove(id: string): Promise<void> {
 		const comment = await this.commentModel.findById(id).exec();
 		if (!comment) {
-			throw new NotFoundException("Comment not found");
+			throw new CommentNotFoundException(id);
 		}
 
 		await this.commentModel.findByIdAndDelete(id).exec();

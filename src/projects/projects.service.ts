@@ -7,6 +7,7 @@ import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
 import { Project, ProjectDocument } from "./project.schema";
 import { TaskStatus } from "src/tasks/task-status.enum";
+import { ProjectNotFoundException } from "./errors/project-not-found.exception";
 
 @Injectable()
 export class ProjectsService {
@@ -43,7 +44,7 @@ export class ProjectsService {
 	async findOne(id: string): Promise<Project> {
 		const project = await this.projectModel.findById(id).exec();
 		if (!project) {
-			throw new NotFoundException("Project not found");
+			throw new ProjectNotFoundException(id);
 		}
 		return project;
 	}
@@ -56,7 +57,7 @@ export class ProjectsService {
 			.findOneAndUpdate({ _id: id }, updateProjectDto, { new: true })
 			.exec();
 		if (!project) {
-			throw new NotFoundException("Project not found");
+			throw new ProjectNotFoundException(id);
 		}
 		return project;
 	}
@@ -64,7 +65,7 @@ export class ProjectsService {
 	async remove(id: string): Promise<void> {
 		const project = await this.projectModel.findById(id).exec();
 		if (!project) {
-			throw new NotFoundException("Project not found");
+			throw new ProjectNotFoundException(id);
 		}
 
 		const projectObjectId = new Types.ObjectId(id);

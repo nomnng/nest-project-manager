@@ -1,11 +1,7 @@
-import {
-	Injectable,
-	CanActivate,
-	ExecutionContext,
-	ForbiddenException,
-	NotFoundException,
-} from "@nestjs/common";
+import { Injectable, CanActivate, ExecutionContext } from "@nestjs/common";
 import { ProjectsService } from "./projects.service";
+import { ProjectNotFoundException } from "./errors/project-not-found.exception";
+import { ProjectForbiddenException } from "./errors/project-forbidden.exception";
 
 @Injectable()
 export class ProjectAccessGuard implements CanActivate {
@@ -20,14 +16,14 @@ export class ProjectAccessGuard implements CanActivate {
 
 		const project = await this.projectsService.findOne(projectId);
 		if (!project) {
-			throw new NotFoundException("Project not found");
+			throw new ProjectNotFoundException(projectId);
 		}
 
 		const isOwner = project.ownerId.toString() === userId;
 		const isMember = project.memberIds?.some((id) => id.toString() === userId);
 
 		if (!isOwner && !isMember) {
-			throw new ForbiddenException("You do not have access to this project");
+			throw new ProjectForbiddenException(projectId);
 		}
 
 		request.project = project;
