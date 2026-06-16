@@ -56,4 +56,10 @@ export class ProjectsController {
 	remove(@Param("id") id: string, @Req() req) {
 		return this.projectsService.remove(req.project.id);
 	}
+
+	@Get(":id/stats")
+	@UseGuards(ProjectAccessGuard)
+	calculateStats(@Param("id") id: string, @Req() req) {
+		return this.projectsService.getProjectStats(id);
+	}
 }

@@ -6,6 +6,7 @@ import { Task, TaskDocument } from "src/tasks/task.schema";
 import { CreateProjectDto } from "./dto/create-project.dto";
 import { UpdateProjectDto } from "./dto/update-project.dto";
 import { Project, ProjectDocument } from "./project.schema";
+import { TaskStatus } from "src/tasks/task-status.enum";
 
 @Injectable()
 export class ProjectsService {
@@ -76,5 +77,85 @@ export class ProjectsService {
 		await this.commentModel.deleteMany({ taskId: { $in: taskIds } }).exec();
 		await this.taskModel.deleteMany({ projectId: projectObjectId }).exec();
 		await this.projectModel.findByIdAndDelete(id).exec();
+	}
+
+	async getProjectStats(id: string) {
+		const now = new Date();
+		const projectObjectId = new Types.ObjectId(id);
+
+		const stats = await this.taskModel.aggregate([
+			{ $match: { projectId: projectObjectId } },
+			{
+				$facet: {
+					statusOverview: [
+						{
+							$group: {
+								_id: "$status",
+								count: { $sum: 1 },
+							},
+						},
+					],
+					deadlineStats: [
+						{
+							$match: {
+								deadline: { $exists: true, $ne: null },
+								status: { $ne: TaskStatus.DONE },
+							},
+						},
+						{
+							$group: {
+								_id: null,
+								overdueCount: {
+									$sum: { $cond: [{ $lt: ["$deadline", now] }, 1, 0] },
+								},
+								hasDeadlineCount: { $sum: 1 },
+							},
+						},
+					],
+					topTags: [
+						{ $unwind: "$tags" },
+						{ $group: { _id: "$tags", count: { $sum: 1 } } },
+						{ $sort: { count: -1 } },
+						{ $limit: 5 },
+					],
+				},
+			},
+
+			{
+				$project: {
+					totalTasks: { $sum: "$statusOverview.count" },
+					statuses: {
+						$arrayToObject: {
+							$map: {
+								input: "$statusOverview",
+								as: "status",
+								in: { k: "$$status._id", v: "$$status.count" },
+							},
+						},
+					},
+					overdueTasks: {
+						$ifNull: [{ $arrayElemAt: ["$deadlineStats.overdueCount", 0] }, 0],
+					},
+					popularTags: {
+						$arrayToObject: {
+							$map: {
+								input: "$topTags",
+								as: "tags",
+								in: { k: "$$tags._id", v: "$$tags.count" },
+							},
+						},
+					},
+				},
+			},
+		]);
+
+		return (
+			stats[0] || {
+				totalTasks: 0,
+				statuses: {},
+				overdueTasks: 0,
+				popularTags: [],
+			}
+		);
 	}
 }

@@ -10,6 +10,7 @@ import { AppModule } from "./../src/app.module";
 import { Project, ProjectDocument } from "src/projects/project.schema";
 import { Task, TaskDocument } from "src/tasks/task.schema";
 import { JwtService } from "@nestjs/jwt";
+import { TaskStatus } from "src/tasks/task-status.enum";
 
 describe("ProjectsController (e2e)", () => {
 	let app: INestApplication<App>;
@@ -29,6 +30,9 @@ describe("ProjectsController (e2e)", () => {
 		mongod = await MongoMemoryServer.create();
 		process.env.MONGO_URI = mongod.getUri();
 		process.env.JWT_SECRET = "e2e-test-jwt-secret";
+
+		jest.useFakeTimers({ advanceTimers: true });
+		jest.setSystemTime(new Date("2026-01-01T12:00:00Z"));
 
 		const moduleFixture: TestingModule = await Test.createTestingModule({
 			imports: [AppModule],
@@ -323,6 +327,71 @@ describe("ProjectsController (e2e)", () => {
 				.delete(`/projects/${wrongId}`)
 				.set("Authorization", `Bearer ${userToken}`)
 				.expect(HttpStatus.NOT_FOUND);
+		});
+	});
+
+	describe("GET /projects/:id/stats", () => {
+		it("returns project status", async () => {
+			const project = await new projectModel({
+				name: "Project",
+				ownerId: mainUserObjectId,
+			}).save();
+
+			await new taskModel({
+				name: "Task 1",
+				projectId: project._id,
+				status: TaskStatus.TODO,
+				tags: ["tag1"],
+				deadline: "2027-01-01T12:00:00Z",
+			}).save();
+
+			await new taskModel({
+				name: "Task 2",
+				projectId: project._id,
+				status: TaskStatus.TODO,
+				tags: ["tag1"],
+				deadline: "2024-01-01T12:00:00Z",
+			}).save();
+
+			await new taskModel({
+				name: "Task 3",
+				projectId: project._id,
+				status: TaskStatus.DONE,
+				tags: ["tag2"],
+				deadline: "2024-01-01T12:00:00Z",
+			}).save();
+
+			const response = await request(app.getHttpServer())
+				.get(`/projects/${project.id}/stats`)
+				.set("Authorization", `Bearer ${userToken}`)
+				.expect(HttpStatus.OK);
+
+			expect(response.body).toEqual(
+				expect.objectContaining({
+					totalTasks: 3,
+					statuses: {
+						DONE: 1,
+						TODO: 2,
+					},
+					overdueTasks: 1,
+					popularTags: {
+						tag1: 2,
+						tag2: 1,
+					},
+				}),
+			);
+		});
+
+		it("returns 403 Forbidden if user is not owner or member", async () => {
+			const project = await new projectModel({
+				name: "Other project",
+				ownerId: otherUserId,
+			}).save();
+
+			await request(app.getHttpServer())
+				.get(`/projects/${project._id}/stats`)
+				.set("Authorization", `Bearer ${userToken}`)
+				.expect(HttpStatus.FORBIDDEN);
 		});
 	});
 });
